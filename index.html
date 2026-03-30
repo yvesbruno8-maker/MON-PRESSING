@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SUPER CLEAN PRESSING - Gestion Pro</title>
+    <style>
+        :root { --primary: #0056b3; --success: #28a745; --danger: #dc3545; --light: #f8f9fa; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 15px; background: #e9ecef; color: #333; }
+        
+        /* Style pour l'écran */
+        .no-print { display: block; }
+        .header { text-align: center; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; border-top: 5px solid var(--primary); }
+        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        input, select, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; font-size: 16px; }
+        button { background: var(--success); color: white; border: none; font-weight: bold; cursor: pointer; }
+        
+        .commande-item { background: white; padding: 15px; margin-bottom: 10px; border-radius: 10px; border-left: 6px solid var(--primary); display: flex; justify-content: space-between; align-items: center; }
+        .actions { display: flex; gap: 5px; flex-wrap: wrap; }
+        .btn-action { width: auto; padding: 8px 12px; font-size: 12px; }
+        .btn-print { background: #6c757d; }
+        .btn-wa { background: #25D366; text-decoration: none; color: white; border-radius: 8px; padding: 8px 12px; font-size: 12px; font-weight: bold; }
+        
+        /* Zone de statistiques */
+        .stats-box { background: var(--primary); color: white; padding: 15px; border-radius: 15px; text-align: center; margin-bottom: 20px; }
+
+        /* STYLE D'IMPRESSION (Masque tout sauf le ticket) */
+        @media print {
+            .no-print { display: none !important; }
+            #ticket-print { display: block !important; width: 80mm; padding: 10px; font-family: 'Courier New', Courier, monospace; }
+        }
+        #ticket-print { display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="no-print">
+        <div class="header">
+            <h1>✨ SUPER CLEAN PRESSING</h1>
+            <p>📍 Douala, Cameroun | 📞 +237 6XX XX XX XX</p>
+        </div>
+
+        <div class="stats-box">
+            <div id="dateJour">Date : --/--/----</div>
+            <div style="font-size: 22px; font-weight: bold;" id="totalRecette">Recette : 0 FCFA</div>
+        </div>
+
+        <div class="card">
+            <h3>Nouvelle Commande</h3>
+            <input type="text" id="client" placeholder="Nom du client">
+            <input type="tel" id="telephone" placeholder="Numéro WhatsApp (ex: 690000000)">
+            <select id="article">
+                <optgroup label="Vêtements">
+                    <option value="500">Chemise (500 FCFA)</option>
+                    <option value="1500">Costume (1500 FCFA)</option>
+                    <option value="1000">Robe (1000 FCFA)</option>
+                    <option value="500">Pantalon (500 FCFA)</option>
+                </optgroup>
+                <optgroup label="Maison">
+                    <option value="2000">Couette (2000 FCFA)</option>
+                    <option value="3000">Couverture (3000 FCFA)</option>
+                </optgroup>
+            </select>
+            <input type="number" id="quantite" placeholder="Quantité" min="1" value="1">
+            <button onclick="ajouterCommande()">ENREGISTRER</button>
+        </div>
+
+        <div id="listeCommandes"></div>
+    </div>
+
+    <div id="ticket-print"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('dateJour').innerText = "Date : " + new Date().toLocaleDateString('fr-FR');
+            afficherCommandes();
+        });
+
+        function ajouterCommande() {
+            const client = document.getElementById('client').value;
+            const tel = document.getElementById('telephone').value;
+            const select = document.getElementById('article');
+            const prix = parseInt(select.value);
+            const articleNom = select.options[select.selectedIndex].text.split('(')[0].trim();
+            const qte = parseInt(document.getElementById('quantite').value);
+            const total = prix * qte;
+
+            if(!client || !tel) { alert("Remplissez le nom et le téléphone !"); return; }
+
+            const nouvelleCmd = { 
+                id: Date.now(), client, tel, article: articleNom, qte, total, 
+                date: new Date().toLocaleDateString('fr-FR'),
+                heure: new Date().toLocaleTimeString('fr-FR', {hour: '2h-digit', minute:'2h-digit'})
+            };
+
+            let commandes = JSON.parse(localStorage.getItem('sc_pressing')) || [];
+            commandes.push(nouvelleCmd);
+            localStorage.setItem('sc_pressing', JSON.stringify(commandes));
+
+            // Reset
+            document.getElementById('client').value = '';
+            document.getElementById('telephone').value = '';
+            afficherCommandes();
+        }
+
+        function afficherCommandes() {
+            const liste = document.getElementById('listeCommandes');
+            const totalRecette = document.getElementById('totalRecette');
+            liste.innerHTML = '<h3>Commandes en attente</h3>';
+            let commandes = JSON.parse(localStorage.getItem('sc_pressing')) || [];
+            let cumul = 0;
+
+            commandes.forEach(cmd => {
+                cumul += cmd.total;
+                const message = `*SUPER CLEAN PRESSING*%0A*Client:* ${cmd.client}%0A*Article:* ${cmd.article} x${cmd.qte}%0A*Total:* ${cmd.total} FCFA`;
+                const whatsappUrl = `https://wa.me/237${cmd.tel}?text=${message}`;
+
+                const div = document.createElement('div');
+                div.className = 'commande-item';
+                div.innerHTML = `
+                    <div>
+                        <strong>${cmd.client}</strong><br>
+                        <small>${cmd.article} x${cmd.qte} - ${cmd.total} FCFA</small>
+                    </div>
+                    <div class="actions">
+                        <a href="${whatsappUrl}" target="_blank" class="btn-wa">WA</a>
+                        <button class="btn-action btn-print" onclick="imprimerTicket(${cmd.id})">Ticket</button>
+                        <button class="btn-action" style="background:var(--danger)" onclick="supprimerCommande(${cmd.id})">Livré</button>
+                    </div>
+                `;
+                liste.appendChild(div);
+            });
+            totalRecette.innerText = `Recette : ${cumul} FCFA`;
+        }
+
+        function imprimerTicket(id) {
+            let commandes = JSON.parse(localStorage.getItem('sc_pressing')) || [];
+            const cmd = commandes.find(c => c.id === id);
+            
+            const ticketZone = document.getElementById('ticket-print');
+            ticketZone.innerHTML = `
+                <div style="text-align:center;">
+                    <h2>SUPER CLEAN</h2>
+                    <p>PRESSING PROFESSIONNEL</p>
+                    <p>------------------------</p>
+                    <p>Client: ${cmd.client}</p>
+                    <p>Date: ${cmd.date} à ${cmd.heure}</p>
+                    <p>------------------------</p>
+                    <p style="text-align:left;">Article: ${cmd.article}</p>
+                    <p style="text-align:left;">Quantité: ${cmd.qte}</p>
+                    <h3 style="text-align:right;">TOTAL: ${cmd.total} FCFA</h3>
+                    <p>------------------------</p>
+                    <p>Merci de votre confiance !</p>
+                </div>
+            `;
+            window.print();
+        }
+
+        function supprimerCommande(id) {
+            let commandes = JSON.parse(localStorage.getItem('sc_pressing')) || [];
+            commandes = commandes.filter(c => c.id !== id);
+            localStorage.setItem('sc_pressing', JSON.stringify(commandes));
+            afficherCommandes();
+        }
+    </script>
+</body>
+</html>
